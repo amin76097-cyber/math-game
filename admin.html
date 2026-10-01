@@ -1,3 +1,217 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پنل مدیریت بازی ریاضی</title><style>body{font-family:Tahoma,Arial;background:#071126;color:#fff;margin:0}.wrap{max-width:1050px;margin:auto;padding:20px}.card{background:#fff;color:#14213d;border-radius:20px;padding:20px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#eef4ff;border-radius:15px;padding:15px;text-align:center}.stat b{font-size:25px;display:block}input,select,button{font:inherit;padding:11px;border-radius:12px;border:1px solid #ccd6e3;margin:4px}button{background:#2563eb;color:#fff;border:0;cursor:pointer}.danger{background:#dc2626}.hide{display:none}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right}@media(max-width:700px){.grid{grid-template-columns:1fr 1fr}table{font-size:12px}}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap"><h1>📊 پنل مدیریت بازی ریاضی چهارم</h1><div id="login" class="card"><h2>ورود مدیر</h2><input id="email" type="email" placeholder="ایمیل مدیر"><input id="pass" type="password" placeholder="رمز مدیر"><button onclick="login()">ورود</button><p id="msg"></p></div><div id="dash" class="hide"><div class="card"><button class="danger" onclick="logout()">خروج</button><select id="school" onchange="load()"><option value="">همه مدارس</option><option>دبستان سلام2</option><option>شهید فهمیده</option></select><button onclick="csv()">دریافت CSV</button></div><div class="grid"><div class="stat">دانش‌آموزان<b id="students">-</b></div><div class="stat">تلاش‌ها<b id="attempts">-</b></div><div class="stat">میانگین امتیاز<b id="avg">-</b></div><div class="stat">آخرین ثبت<b id="last">-</b></div></div><div class="card"><h2>دانش‌آموزان و عملکرد</h2><table><thead><tr><th>نام</th><th>مدرسه</th><th>تلاش‌ها</th><th>بهترین امتیاز</th><th>میانگین</th></tr></thead><tbody id="rows"></tbody></table></div></div></div><script>const URL='https://riaxxbxepselirixzoxs.supabase.co';const KEY='__SUPABASE_PUBLISHABLE_KEY__';const sb=supabase.createClient(URL,KEY);let data=[];async function login(){const {data:d,error}=await sb.auth.signInWithPassword({email:email.value,password:pass.value});if(error){msg.textContent='ورود ناموفق: '+error.message;return}const {data:a,error:e}=await sb.from('admins').select('email').eq('email',d.user.email).maybeSingle();if(e||!a){await sb.auth.signOut();msg.textContent='این حساب مدیر نیست.';return}loginBox(false);await load()}function loginBox(show){document.getElementById('login').classList.toggle('hide',!show);document.getElementById('dash').classList.toggle('hide',show)}async function load(){const {data:st,error:e}=await sb.from('students').select('id,full_name,school_id,schools(name)').order('created_at',{ascending:false});if(e){alert(e.message);return}const {data:at,error:x}=await sb.from('attempts').select('*').order('created_at',{ascending:false});if(x){alert(x.message);return}let school=school.value;let students=st.filter(s=>!school||s.schools?.name===school);let ids=new Set(students.map(s=>s.id));let ats=at.filter(a=>ids.has(a.student_id));data=students.map(s=>{let aa=ats.filter(a=>a.student_id===s.id);return {name:s.full_name,school:s.schools?.name||'',attempts:aa.length,best:aa.length?Math.max(...aa.map(a=>a.score||0)):0,avg:aa.length?Math.round(aa.reduce((q,a)=>q+(Number(a.percentage)||0),0)/aa.length):0}});studentsEl.textContent=students.length;attemptsEl.textContent=ats.length;avgEl.textContent=ats.length?Math.round(ats.reduce((q,a)=>q+(Number(a.percentage)||0),0)/ats.length)+'%':'-';lastEl.textContent=ats.length?new Date(ats[0].created_at).toLocaleDateString('fa-IR'):'-';rows.innerHTML=data.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.school)}</td><td>${r.attempts}</td><td>${r.best}</td><td>${r.avg}%</td></tr>`).join('')}function esc(x){return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}async function logout(){await sb.auth.signOut();loginBox(true)}function csv(){let h='نام,مدرسه,تلاش‌ها,بهترین امتیاز,میانگین
-';let b=data.map(r=>[r.name,r.school,r.attempts,r.best,r.avg].map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('
-');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+h+b],{type:'text/csv'}));a.download='گزارش-بازی-ریاضی.csv';a.click()}const studentsEl=document.getElementById('students'),attemptsEl=document.getElementById('attempts'),avgEl=document.getElementById('avg'),lastEl=document.getElementById('last'),rows=document.getElementById('rows');</script></body></html>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>پنل مدیریت بازی ریاضی چهارم</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --primary: #2563eb;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    h1 { margin-top: 0; display: flex; align-items: center; justify-content: space-between; font-size: 1.5rem; }
+    input, select, button { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: #0f172a; color: #fff; font-size: 0.95rem; }
+    button { background: var(--primary); cursor: pointer; border: none; font-weight: bold; }
+    button:hover { opacity: 0.9; }
+    .flex { display: flex; gap: 10px; align-items: center; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+    .stat-val { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: right; }
+    th, td { padding: 12px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    #login-box { max-width: 400px; margin: 80px auto; }
+    .hidden { display: none !important; }
+    #msg { margin-top: 10px; font-size: 0.9rem; color: #ef4444; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- فرم لاگین -->
+  <div id="login-box" class="card">
+    <h2 style="margin-top:0">ورود مدیر</h2>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <input type="email" id="email" placeholder="ایمیل مدیر" value="amin76097@gmail.com">
+      <input type="password" id="pass" placeholder="رمز عبور">
+      <button id="btn-login" onclick="login()">ورود</button>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <!-- داشبورد اصلی -->
+  <div id="dash" class="hidden">
+    <div class="card">
+      <h1>
+        <span>📊 پنل گزارش عملکرد دانش‌آموزان</span>
+        <button onclick="logout()" style="background:#ef4444; font-size:0.85rem;">خروج</button>
+      </h1>
+      
+      <div class="grid">
+        <div class="stat-card">
+          <div style="color:var(--muted)">تعداد شرکت‌کنندگان</div>
+          <div class="stat-val" id="st-count">0</div>
+        </div>
+        <div class="stat-card">
+          <div style="color:var(--muted)">میانگین نمرات</div>
+          <div class="stat-val" id="st-avg">0</div>
+        </div>
+      </div>
+
+      <div class="flex" style="margin-bottom:15px; flex-wrap:wrap;">
+        <input type="text" id="srch" placeholder="جستجوی نام دانش‌آموز..." oninput="render()">
+        <button onclick="csv()" style="margin-right:auto; background:#10b981;">دریافت خروجی اکسل (CSV)</button>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>نام و نام‌خانوادگی</th>
+              <th>مدرسه</th>
+              <th>امتیاز نهایی</th>
+              <th>تاریخ و ساعت</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="4" style="text-align:center; color:var(--muted)">در حال بارگذاری اطلاعات...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const RIAZI_CONFIG = {
+    SUPABASE_URL: "https://riaxxbxepselirixzoxs.supabase.co",
+    SUPABASE_ANON_KEY: "GAPGPTMASKTOKENdp5royjdcnuX0X"
+  };
+
+  const sb = window.supabase.createClient(RIAZI_CONFIG.SUPABASE_URL, RIAZI_CONFIG.SUPABASE_ANON_KEY);
+  let allData = [];
+
+  async function login() {
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('pass').value;
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('btn-login');
+
+    if(!email || !pass) {
+      msg.textContent = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'در حال بررسی...';
+    msg.textContent = '';
+
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+      if (error) throw error;
+
+      // بررسی وجود در جدول مدیران
+      const { data: adminData, error: adminErr } = await sb
+        .from('admins')
+        .select('email')
+        .eq('email', data.user.email)
+        .maybeSingle();
+
+      if (adminErr || !adminData) {
+        await sb.auth.signOut();
+        throw new Error('حساب شما به عنوان مدیر در دیتابیس ثبت نشده است.');
+      }
+
+      document.getElementById('login-box').classList.add('hidden');
+      document.getElementById('dash').classList.remove('hidden');
+      loadData();
+    } catch(err) {
+      msg.textContent = err.message || 'خطا در ورود به سیستم';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'ورود';
+    }
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+    location.reload();
+  }
+
+  async function loadData() {
+    const tbody = document.getElementById('rows');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">در حال دریافت اطلاعات...</td></tr>';
+
+    const { data, error } = await sb
+      .from('attempts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if(error) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444;">خطا: ${error.message}</td></tr>`;
+      return;
+    }
+
+    allData = data || [];
+    render();
+  }
+
+  function render() {
+    const q = document.getElementById('srch').value.trim().toLowerCase();
+    const filtered = allData.filter(d => (d.student_name || '').toLowerCase().includes(q));
+    const tbody = document.getElementById('rows');
+
+    document.getElementById('st-count').textContent = allData.length;
+    if(allData.length > 0) {
+      const sum = allData.reduce((acc, c) => acc + (c.score || 0), 0);
+      document.getElementById('st-avg').textContent = Math.round(sum / allData.length);
+    }
+
+    if(filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--muted)">هیچ رکوردی یافت نشد.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => `
+      <tr>
+        <td><strong>${r.student_name || 'نامشخص'}</strong></td>
+        <td>${r.school_name || '—'}</td>
+        <td><span style="color:#10b981; font-weight:bold;">${r.score ?? 0}</span></td>
+        <td style="color:var(--muted); font-size:0.85rem;">${new Date(r.created_at).toLocaleString('fa-IR')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function csv() {
+    if(!allData.length) return alert('داده‌ای برای خروجی وجود ندارد.');
+    let h = 'نام دانش آموز,مدرسه,امتیاز,تاریخ\n';
+    let body = allData.map(r => `"${r.student_name || ''}","${r.school_name || ''}","${r.score || 0}","${r.created_at}"`).join('\n');
+    let blob = new Blob(["\uFEFF" + h + body], { type: 'text/csv;charset=utf-8;' });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "math-game-results.csv";
+    link.click();
+  }
+
+  // بررسی ورود قبلی کاربر
+  window.addEventListener('DOMContentLoaded', async () => {
+    const { data } = await sb.auth.getSession();
+    if(data && data.session) {
+      document.getElementById('login-box').classList.add('hidden');
+      document.getElementById('dash').classList.remove('hidden');
+      loadData();
+    }
+  });
+</script>
+
+</body>
+</html>
