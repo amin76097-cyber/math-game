@@ -22,16 +22,14 @@
 </head>
 <body>
 
-  <!-- فرم ورود -->
   <div id="loginCard" class="card">
     <h2>ورود مدیر</h2>
-    <input type="email" id="userEmail" placeholder="ایمیل خود را وارد کنید">
+    <input type="email" id="userEmail" placeholder="ایمیل مدیریت">
     <input type="password" id="userPass" placeholder="رمز عبور">
     <button id="loginBtn" onclick="login()">ورود</button>
     <div id="loginMsg" class="msg"></div>
   </div>
 
-  <!-- داشبورد مدیریت -->
   <div id="dashboard" class="panel">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <h2>گزارش نمرات دانش‌آموزان</h2>
@@ -54,7 +52,7 @@
 
   <script>
     const SUPABASE_URL = 'https://riaxxbxepselirixzoxs.supabase.co';
-    const SUPABASE_ANON_KEY = 'GAPGPTMASKTOKEN1kjb46219riX0X';
+    const SUPABASE_ANON_KEY = 'GAPGPTMASKTOKEN7qsph7sbxdsX2X';
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -78,7 +76,6 @@
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        // بررسی دسترسی ادمین
         const { data: adminRow, error: adminErr } = await sb
           .from('admins')
           .select('id')
