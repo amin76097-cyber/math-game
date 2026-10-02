@@ -1,149 +1,27 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>پنل مدیریت بازی ریاضی</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    body { font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    h2 { text-align: center; margin-bottom: 20px; }
-    input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    button:hover { background: #1d4ed8; }
-    .msg { margin-top: 15px; text-align: center; font-size: 14px; }
-    .err { color: #ef4444; }
-    .panel { display: none; width: 100%; max-width: 900px; background: #1e293b; padding: 20px; border-radius: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border: 1px solid #334155; text-align: center; font-size: 14px; }
-    th { background: #0f172a; }
-  </style>
+    <meta charset="UTF-8">
+    <title>پنل مدیریت</title>
 </head>
 <body>
+    <h1>لیست امتیازات</h1>
+    <div id="results">در حال بارگذاری...</div>
 
-  <div id="loginCard" class="card">
-    <h2>ورود مدیر</h2>
-    <input type="email" id="userEmail" placeholder="ایمیل مدیریت">
-    <input type="password" id="userPass" placeholder="رمز عبور">
-    <button id="loginBtn" onclick="login()">ورود</button>
-    <div id="loginMsg" class="msg"></div>
-  </div>
+    <script>
+        const API_URL = https://sheetdb.io/api/v1/1rimik9r6h8ti
 
-  <div id="dashboard" class="panel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h2>گزارش نمرات دانش‌آموزان</h2>
-      <button style="width:auto; padding:8px 16px; background:#dc2626;" onclick="logout()">خروج</button>
-    </div>
-    <div id="dataStatus" style="margin-top:10px;">در حال بارگذاری اطلاعات...</div>
-    <table id="scoresTable" style="display:none;">
-      <thead>
-        <tr>
-          <th>نام و نام خانوادگی</th>
-          <th>مدرسه</th>
-          <th>امتیاز نهایی</th>
-          <th>تعداد پاسخ درست</th>
-          <th>تاریخ</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-  </div>
-
-  <script>
-    const SUPABASE_URL = 'https://riaxxbxepselirixzoxs.supabase.co';
-    const SUPABASE_ANON_KEY = 'GAPGPTMASKTOKEN7qsph7sbxdsX2X';
-
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    async function login() {
-      const email = document.getElementById('userEmail').value.trim();
-      const password = document.getElementById('userPass').value;
-      const msg = document.getElementById('loginMsg');
-      const btn = document.getElementById('loginBtn');
-
-      if (!email || !password) {
-        msg.className = 'msg err';
-        msg.innerText = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerText = 'در حال بررسی...';
-      msg.innerText = '';
-
-      try {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-
-        const { data: adminRow, error: adminErr } = await sb
-          .from('admins')
-          .select('id')
-          .eq('email', email)
-          .maybeSingle();
-
-        if (adminErr || !adminRow) {
-          throw new Error('این حساب کاربری دسترسی مدیریت ندارد.');
+        async function loadData() {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            let html = "<table border='1'><tr><th>نام</th><th>امتیاز</th></tr>";
+            data.forEach(row => {
+                html += `<tr><td>${row.student_name}</td><td>${row.score}</td></tr>`;
+            });
+            html += "</table>";
+            document.getElementById('results').innerHTML = html;
         }
-
-        document.getElementById('loginCard').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        loadScores();
-      } catch (err) {
-        msg.className = 'msg err';
-        msg.innerText = err.message === 'Invalid login credentials' ? 'ایمیل یا رمز عبور اشتباه است.' : err.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = 'ورود';
-      }
-    }
-
-    async function loadScores() {
-      const status = document.getElementById('dataStatus');
-      const table = document.getElementById('scoresTable');
-      const tbody = document.getElementById('tableBody');
-
-      try {
-        const { data, error } = await sb
-          .from('attempts')
-          .select('score, correct_answers, created_at, students(full_name, schools(name))')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          status.innerText = 'هنوز نتیجه‌ای ثبت نشده است.';
-          return;
-        }
-
-        status.style.display = 'none';
-        table.style.display = 'table';
-        tbody.innerHTML = '';
-
-        data.forEach(item => {
-          const tr = document.createElement('tr');
-          const studentName = item.students ? item.students.full_name : 'نامشخص';
-          const schoolName = (item.students && item.students.schools) ? item.students.schools.name : 'نامشخص';
-          const date = new Date(item.created_at).toLocaleDateString('fa-IR');
-
-          tr.innerHTML = `
-            <td>${studentName}</td>
-            <td>${schoolName}</td>
-            <td>${item.score}</td>
-            <td>${item.correct_answers}</td>
-            <td>${date}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        status.innerText = 'خطا در دریافت اطلاعات: ' + err.message;
-      }
-    }
-
-    async function logout() {
-      await sb.auth.signOut();
-      location.reload();
-    }
-  </script>
+        loadData();
+    </script>
 </body>
 </html>
