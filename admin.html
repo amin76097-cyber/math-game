@@ -3,215 +3,150 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>پنل مدیریت بازی ریاضی چهارم</title>
+  <title>پنل مدیریت بازی ریاضی</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --primary: #2563eb;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --border: #334155;
-    }
-    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    h1 { margin-top: 0; display: flex; align-items: center; justify-content: space-between; font-size: 1.5rem; }
-    input, select, button { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: #0f172a; color: #fff; font-size: 0.95rem; }
-    button { background: var(--primary); cursor: pointer; border: none; font-weight: bold; }
-    button:hover { opacity: 0.9; }
-    .flex { display: flex; gap: 10px; align-items: center; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
-    .stat-val { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: right; }
-    th, td { padding: 12px; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-weight: 600; }
-    #login-box { max-width: 400px; margin: 80px auto; }
-    .hidden { display: none !important; }
-    #msg { margin-top: 10px; font-size: 0.9rem; color: #ef4444; }
+    body { font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    h2 { text-align: center; margin-bottom: 20px; }
+    input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { background: #1d4ed8; }
+    .msg { margin-top: 15px; text-align: center; font-size: 14px; }
+    .err { color: #ef4444; }
+    .panel { display: none; width: 100%; max-width: 900px; background: #1e293b; padding: 20px; border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #334155; text-align: center; font-size: 14px; }
+    th { background: #0f172a; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <!-- فرم لاگین -->
-  <div id="login-box" class="card">
-    <h2 style="margin-top:0">ورود مدیر</h2>
-    <div style="display:flex; flex-direction:column; gap:12px;">
-      <input type="email" id="email" placeholder="ایمیل مدیر" value="amin76097@gmail.com">
-      <input type="password" id="pass" placeholder="رمز عبور">
-      <button id="btn-login" onclick="login()">ورود</button>
-      <div id="msg"></div>
-    </div>
+  <!-- فرم ورود -->
+  <div id="loginCard" class="card">
+    <h2>ورود مدیر</h2>
+    <input type="email" id="userEmail" placeholder="ایمیل خود را وارد کنید">
+    <input type="password" id="userPass" placeholder="رمز عبور">
+    <button id="loginBtn" onclick="login()">ورود</button>
+    <div id="loginMsg" class="msg"></div>
   </div>
 
-  <!-- داشبورد اصلی -->
-  <div id="dash" class="hidden">
-    <div class="card">
-      <h1>
-        <span>📊 پنل گزارش عملکرد دانش‌آموزان</span>
-        <button onclick="logout()" style="background:#ef4444; font-size:0.85rem;">خروج</button>
-      </h1>
-      
-      <div class="grid">
-        <div class="stat-card">
-          <div style="color:var(--muted)">تعداد شرکت‌کنندگان</div>
-          <div class="stat-val" id="st-count">0</div>
-        </div>
-        <div class="stat-card">
-          <div style="color:var(--muted)">میانگین نمرات</div>
-          <div class="stat-val" id="st-avg">0</div>
-        </div>
-      </div>
-
-      <div class="flex" style="margin-bottom:15px; flex-wrap:wrap;">
-        <input type="text" id="srch" placeholder="جستجوی نام دانش‌آموز..." oninput="render()">
-        <button onclick="csv()" style="margin-right:auto; background:#10b981;">دریافت خروجی اکسل (CSV)</button>
-      </div>
-
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>نام و نام‌خانوادگی</th>
-              <th>مدرسه</th>
-              <th>امتیاز نهایی</th>
-              <th>تاریخ و ساعت</th>
-            </tr>
-          </thead>
-          <tbody id="rows">
-            <tr><td colspan="4" style="text-align:center; color:var(--muted)">در حال بارگذاری اطلاعات...</td></tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- داشبورد مدیریت -->
+  <div id="dashboard" class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2>گزارش نمرات دانش‌آموزان</h2>
+      <button style="width:auto; padding:8px 16px; background:#dc2626;" onclick="logout()">خروج</button>
     </div>
+    <div id="dataStatus" style="margin-top:10px;">در حال بارگذاری اطلاعات...</div>
+    <table id="scoresTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>نام و نام خانوادگی</th>
+          <th>مدرسه</th>
+          <th>امتیاز نهایی</th>
+          <th>تعداد پاسخ درست</th>
+          <th>تاریخ</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
   </div>
-</div>
 
-<script>
-  const RIAZI_CONFIG = {
-    SUPABASE_URL: "https://riaxxbxepselirixzoxs.supabase.co",
-    const SUPABASE_ANON_KEY = 'sb_publishable_TLnw0qchPgG_kY_Lw1xX7g_cwiglIEO';
-  };
+  <script>
+    const SUPABASE_URL = 'https://riaxxbxepselirixzoxs.supabase.co';
+    const SUPABASE_ANON_KEY = 'GAPGPTMASKTOKEN1kjb46219riX0X';
 
-  const sb = window.supabase.createClient(RIAZI_CONFIG.SUPABASE_URL, RIAZI_CONFIG.SUPABASE_ANON_KEY);
-  let allData = [];
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  async function login() {
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('pass').value;
-    const msg = document.getElementById('msg');
-    const btn = document.getElementById('btn-login');
+    async function login() {
+      const email = document.getElementById('userEmail').value.trim();
+      const password = document.getElementById('userPass').value;
+      const msg = document.getElementById('loginMsg');
+      const btn = document.getElementById('loginBtn');
 
-    if(!email || !pass) {
-      msg.textContent = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'در حال بررسی...';
-    msg.textContent = '';
-
-    try {
-      const { data, error } = await sb.auth.signInWithPassword({ email: email, password: pass });
-      if (error) throw error;
-
-      // بررسی وجود در جدول مدیران
-      const { data: adminData, error: adminErr } = await sb
-        .from('admins')
-        .select('email')
-        .eq('email', data.user.email)
-        .maybeSingle();
-
-      if (adminErr || !adminData) {
-        await sb.auth.signOut();
-        throw new Error('حساب شما به عنوان مدیر در دیتابیس ثبت نشده است.');
+      if (!email || !password) {
+        msg.className = 'msg err';
+        msg.innerText = 'لطفاً ایمیل و رمز عبور را وارد کنید.';
+        return;
       }
 
-      document.getElementById('login-box').classList.add('hidden');
-      document.getElementById('dash').classList.remove('hidden');
-      loadData();
-    } catch(err) {
-      msg.textContent = err.message || 'خطا در ورود به سیستم';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'ورود';
-    }
-  }
+      btn.disabled = true;
+      btn.innerText = 'در حال بررسی...';
+      msg.innerText = '';
 
-  async function logout() {
-    await sb.auth.signOut();
-    location.reload();
-  }
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
 
-  async function loadData() {
-    const tbody = document.getElementById('rows');
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">در حال دریافت اطلاعات...</td></tr>';
+        // بررسی دسترسی ادمین
+        const { data: adminRow, error: adminErr } = await sb
+          .from('admins')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
 
-    const { data, error } = await sb
-      .from('attempts')
-      .select('*')
-      .order('created_at', { ascending: false });
+        if (adminErr || !adminRow) {
+          throw new Error('این حساب کاربری دسترسی مدیریت ندارد.');
+        }
 
-    if(error) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444;">خطا: ${error.message}</td></tr>`;
-      return;
-    }
-
-    allData = data || [];
-    render();
-  }
-
-  function render() {
-    const q = document.getElementById('srch').value.trim().toLowerCase();
-    const filtered = allData.filter(d => (d.student_name || '').toLowerCase().includes(q));
-    const tbody = document.getElementById('rows');
-
-    document.getElementById('st-count').textContent = allData.length;
-    if(allData.length > 0) {
-      const sum = allData.reduce((acc, c) => acc + (c.score || 0), 0);
-      document.getElementById('st-avg').textContent = Math.round(sum / allData.length);
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        loadScores();
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.innerText = err.message === 'Invalid login credentials' ? 'ایمیل یا رمز عبور اشتباه است.' : err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'ورود';
+      }
     }
 
-    if(filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--muted)">هیچ رکوردی یافت نشد.</td></tr>';
-      return;
+    async function loadScores() {
+      const status = document.getElementById('dataStatus');
+      const table = document.getElementById('scoresTable');
+      const tbody = document.getElementById('tableBody');
+
+      try {
+        const { data, error } = await sb
+          .from('attempts')
+          .select('score, correct_answers, created_at, students(full_name, schools(name))')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          status.innerText = 'هنوز نتیجه‌ای ثبت نشده است.';
+          return;
+        }
+
+        status.style.display = 'none';
+        table.style.display = 'table';
+        tbody.innerHTML = '';
+
+        data.forEach(item => {
+          const tr = document.createElement('tr');
+          const studentName = item.students ? item.students.full_name : 'نامشخص';
+          const schoolName = (item.students && item.students.schools) ? item.students.schools.name : 'نامشخص';
+          const date = new Date(item.created_at).toLocaleDateString('fa-IR');
+
+          tr.innerHTML = `
+            <td>${studentName}</td>
+            <td>${schoolName}</td>
+            <td>${item.score}</td>
+            <td>${item.correct_answers}</td>
+            <td>${date}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        status.innerText = 'خطا در دریافت اطلاعات: ' + err.message;
+      }
     }
 
-    tbody.innerHTML = filtered.map(r => `
-      <tr>
-        <td><strong>${r.student_name || 'نامشخص'}</strong></td>
-        <td>${r.school_name || '—'}</td>
-        <td><span style="color:#10b981; font-weight:bold;">${r.score ?? 0}</span></td>
-        <td style="color:var(--muted); font-size:0.85rem;">${new Date(r.created_at).toLocaleString('fa-IR')}</td>
-      </tr>
-    `).join('');
-  }
-
-  function csv() {
-    if(!allData.length) return alert('داده‌ای برای خروجی وجود ندارد.');
-    let h = 'نام دانش آموز,مدرسه,امتیاز,تاریخ\n';
-    let body = allData.map(r => `"${r.student_name || ''}","${r.school_name || ''}","${r.score || 0}","${r.created_at}"`).join('\n');
-    let blob = new Blob(["\uFEFF" + h + body], { type: 'text/csv;charset=utf-8;' });
-    let link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "math-game-results.csv";
-    link.click();
-  }
-
-  // بررسی ورود قبلی کاربر
-  window.addEventListener('DOMContentLoaded', async () => {
-    const { data } = await sb.auth.getSession();
-    if(data && data.session) {
-      document.getElementById('login-box').classList.add('hidden');
-      document.getElementById('dash').classList.remove('hidden');
-      loadData();
+    async function logout() {
+      await sb.auth.signOut();
+      location.reload();
     }
-  });
-</script>
-
+  </script>
 </body>
 </html>
